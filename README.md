@@ -1,2 +1,134 @@
 # GNN4IRSpecPAH
-Graph Neural Network Prediction of Infrared Spectra of Interstellar Polycyclic Aromatic Hydrocarbons
+Graph Neural Network Prediction of Infrared Spectra of Polycyclic Aromatic Hydrocarbons
+This is a python code for predicting infrared spectra of PAH molecules using graph neural network (GNN) models. 
+
+CODE USAGE INSTRUCTIONS
+-------------------------
+1. MODEL CODE DESCRIPTION
+-------------------------
+This code repository contains several graph neural network (GNN) models for predicting infrared spectral data of polycyclic aromatic hydrocarbons (PAHs). All models are trained using different loss functions.
+
+Model Files:
+AFP model with EMD loss: PAH_EMD_AFP.py
+GAT model with EMD loss: PAH_EMD_GAT.py
+GCN model with EMD loss: PAH_EMD_GCN.py
+MFP model with EMD loss: PAH_EMD_MFP.py
+MPNN model with EMD loss: PAH_EMD_MPNN.py
+AFP model with HD loss: PAH_HD_AFP.py
+AFP model with JSD loss: PAH_JSD_AFP.py
+AFP model with SIS loss: PAH_SIS_AFP.py
+AFP model with TVD loss: PAH_TVD_AFP.py
+AFP generalization test with JSD loss: PAH_JSD_TEST_AFP.py
+
+Note: The AFP model performed best in our study, with the JSD loss function version selected as the final optimal model.
+
+-------------------------
+2. DATA DESCRIPTION
+-------------------------
+Data Sources:
+From NASA Ames PAH Database versions 3.2 and 4.0
+Contains SMILES strings of neutral PAH molecules and their corresponding infrared spectral data
+
+Data Files:
+High-frequency spectra from v3.2: 3.2_CH_Cleaner_ALL_High_PAHs_Dataset.pickle
+Low-frequency spectra from v3.2: 3.2_CH_Cleaner_PAHs_Dataset.pickle
+High-frequency spectra from v4.0: 4.0_CH_Cleaner_50_100_ALL_High_PAHs_Dataset.pickle
+Low-frequency spectra from v4.0: 4.0_CH_Cleaner_50_100_PAHs_Dataset.pickle
+Complete data (high + low frequency) from v3.2: 3.2_PAHs_Data.csv
+Complete data (high + low frequency) from v4.0: 4.0_PAHs_Data.csv
+
+Note: Version 4.0 data is used to test the model's generalization capability to larger molecules (containing 50-100 carbon atoms).
+
+-------------------------
+3. EXECUTION INSTRUCTIONS
+-------------------------
+Environment Setup:
+Ensure required Python packages are installed (PyTorch, RDKit, DeepChem, etc.)
+Place all code and data files in the same directory
+
+Execution Steps:
+Run any model file (e.g., PAH_JSD_AFP.py) for training or prediction
+Prediction results will be automatically saved to the "Fold_Predictions" directory
+The "Best_model" file in this directory contains the trained AFP model using JSD loss
+When running PAH_JSD_TEST_AFP.py, this best model will be used for predictions
+
+-------------------------
+4. LIMITATIONS
+-------------------------
+The current model only supports neutral PAH molecules and does not support charged molecules or isotopologues
+Prediction uncertainty may increase for molecules that differ significantly from the training dataset
+The model performs best for PAHs containing 20-40 carbon atoms; prediction accuracy decreases for larger molecules
+
+---------------------------
+5. Conda env. configuration
+---------------------------
+aiohappyeyeballs          2.6.1                    
+aiohttp                   3.12.15                  
+aiosignal                 1.4.0                    
+async-timeout             5.0.1                    
+attrs                     25.3.0                   
+bzip2                     1.0.8
+ca-certificates           2025.7.14
+cloudpickle               3.1.1                    
+colorama                  0.4.6                    
+contourpy                 1.3.0                    
+cycler                    0.12.1                   
+deepchem                  2.8.1.dev20250723140145          
+dgl                       1.1.2                    
+dgllife                   0.3.2                    
+filelock                  3.18.0                   
+fonttools                 4.59.0                   
+frozenlist                1.7.0                    
+fsspec                    2025.7.0                 
+future                    1.0.0                    
+git                       2.49.0
+huggingface-hub           0.33.4                   
+hyperopt                  0.2.7                    
+importlib-resources       6.5.2                    
+jinja2                    3.1.6                    
+kiwisolver                1.4.7                    
+libexpat                  2.7.1
+libffi                    3.4.6
+liblzma                   5.8.1
+libsqlite                 3.50.3
+libzlib                   1.3.1
+matplotlib                3.9.4                    
+mpmath                    1.3.0                    
+multidict                 6.6.4                    
+networkx                  3.2.1                    
+openssl                   3.5.1
+pandas                    2.3.1                    
+pillow                    11.3.0                   
+pip                       25.1.1
+propcache                 0.3.2                    
+psutil                    7.0.0                    
+py4j                      0.10.9.9                 
+pyparsing                 3.2.3                    
+python                    3.9.23
+python-dateutil           2.9.0.post0              
+pytz                      2025.2                   
+pyyaml                    6.0.2                    
+rdkit                     2025.3.3                 
+regex                     2024.11.6                
+safetensors               0.5.3                    
+setuptools                80.9.0
+sympy                     1.14.0                   
+threadpoolctl             3.6.0                    
+tk                        8.6.13
+tokenizers                0.21.2                   
+torch                     2.1.2+cu121              
+torch-cluster             1.6.3+pt21cu121          
+torch-geometric           2.6.1                    
+torch-scatter             2.1.2+pt21cu121          
+torch-sparse              0.6.18+pt21cu121          
+torch-spline-conv         1.2.2+pt21cu121          
+torchdata                 0.7.1                    
+torchvision               0.16.2+cu121             
+tqdm                      4.67.1                   
+transformers              4.53.3                   
+tzdata                    2025.2                  
+ucrt                      10.0.22621.0         
+vc                        14.3                
+vc14_runtime              14.44.35208         
+wheel                     0.45.1          
+yarl                      1.20.1
