@@ -1,5 +1,6 @@
 # GNN4IRSpecPAH
 Graph Neural Network Prediction of Infrared Spectra of Polycyclic Aromatic Hydrocarbons
+
 This is a python code for predicting infrared spectra of PAH molecules using graph neural network (GNN) models. 
 
 CODE USAGE INSTRUCTIONS
@@ -26,8 +27,8 @@ Note: The AFP model performed best in our study, with the JSD loss function vers
 2. DATA DESCRIPTION
 -------------------------
 Data Sources:
-From NASA Ames PAH Database versions 3.2 and 4.0
-Contains SMILES strings of neutral PAH molecules and their corresponding infrared spectral data
+From NASA Ames PAH Database versions 3.2 and 4.0.
+Contains SMILES strings of neutral PAH molecules and their corresponding infrared spectral data.
 
 Data Files:
 High-frequency spectra from v3.2: 3.2_CH_Cleaner_ALL_High_PAHs_Dataset.pickle
@@ -43,21 +44,21 @@ Note: Version 4.0 data is used to test the model's generalization capability to 
 3. EXECUTION INSTRUCTIONS
 -------------------------
 Environment Setup:
-Ensure required Python packages are installed (PyTorch, RDKit, DeepChem, etc.)
-Place all code and data files in the same directory
+Ensure required Python packages are installed (PyTorch, RDKit, DeepChem, etc.).
+Place all code and data files in the same directory.
 
 Execution Steps:
-Run any model file (e.g., PAH_JSD_AFP.py) for training or prediction
-Prediction results will be automatically saved to the "Fold_Predictions" directory
-The "Best_model" file in this directory contains the trained AFP model using JSD loss
-When running PAH_JSD_TEST_AFP.py, this best model will be used for predictions
+Run any model file (e.g., PAH_JSD_AFP.py) for training or prediction.
+Prediction results will be automatically saved to the "Fold_Predictions" directory.
+The "Best_model" file in this directory contains the trained AFP model using JSD loss.
+When running PAH_JSD_TEST_AFP.py, this best model will be used for predictions.
 
 -------------------------
 4. LIMITATIONS
 -------------------------
-The current model only supports neutral PAH molecules and does not support charged molecules or isotopologues
-Prediction uncertainty may increase for molecules that differ significantly from the training dataset
-The model performs best for PAHs containing 20-40 carbon atoms; prediction accuracy decreases for larger molecules
+The current model only supports neutral PAH molecules and does not support charged molecules or isotopologues.
+Prediction uncertainty may increase for molecules that differ significantly from the training dataset.
+The model performs best for PAHs containing 20-40 carbon atoms; prediction accuracy decreases for larger molecules.
 
 ---------------------------
 5. Conda env. configuration
