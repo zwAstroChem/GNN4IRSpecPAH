@@ -10,14 +10,14 @@ import os
 import statistics
 
 # -----------------------
-# 自动选择设备
+# Automatically select device (GPU if available, otherwise CPU)
 # -----------------------
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(f"Using device: {device}")
 
 
 # -----------------------
-# EMD Loss (评估用)
+# Earth Mover's Distance (EMD) Loss (for evaluation)
 # -----------------------
 def emd_loss(pred, target):
     pred_sum = pred.sum(dim=1, keepdim=True) + 1e-8
@@ -34,38 +34,39 @@ def emd_loss(pred, target):
 
 
 # -----------------------
-# Hellinger Distance Loss (训练用)
+# Hellinger Distance Loss (for training)
 # -----------------------
 def hellinger_loss(pred, target):
     """
-    Hellinger距离损失函数
+    Hellinger distance loss function
     pred, target: [batch_size, spectrum_len]
-    Hellinger距离范围为[0, 1]，值越小表示分布越相似
+    The Hellinger distance ranges from [0, 1];
+    smaller values indicate more similar distributions.
     """
-    # 归一化成概率分布
+    # Normalize to probability distributions
     pred_sum = pred.sum(dim=1, keepdim=True) + 1e-8
     target_sum = target.sum(dim=1, keepdim=True) + 1e-8
     p = pred / pred_sum
     q = target / target_sum
 
-    # 数值稳定性处理
+    # Numerical stability
     eps = 1e-8
     p = torch.clamp(p, eps, 1.0)
     q = torch.clamp(q, eps, 1.0)
 
-    # 计算Hellinger距离：H(P,Q) = (1/√2) * ||√P - √Q||₂
+    # Hellinger distance: H(P, Q) = (1 / sqrt(2)) * ||sqrt(P) - sqrt(Q)||_2
     sqrt_p = torch.sqrt(p)
     sqrt_q = torch.sqrt(q)
     diff = sqrt_p - sqrt_q
-    l2_norm = torch.norm(diff, p=2, dim=1)  # L2范数
+    l2_norm = torch.norm(diff, p=2, dim=1)
     hellinger = l2_norm / torch.sqrt(torch.tensor(2.0, device=device))
 
-    # 返回批次平均值
+    # Return batch mean
     return torch.mean(hellinger)
 
 
 # -----------------------
-# 光谱归一化
+# Spectrum normalization
 # -----------------------
 def normalize_spectrum(s):
     s = np.array(s, dtype=np.float32)
@@ -76,7 +77,7 @@ def normalize_spectrum(s):
 
 
 # -----------------------
-# SMILES → PyG Data (带 smiles)
+# SMILES → PyG Data object (with SMILES stored)
 # -----------------------
 def mol_to_graph_data(smiles, spectrum):
     mol = Chem.MolFromSmiles(smiles)
@@ -111,6 +112,7 @@ def mol_to_graph_data(smiles, spectrum):
             feat[10] = 1
         feat.append(atom.GetDegree())
         atom_feats.append(feat)
+
     x = torch.tensor(atom_feats, dtype=torch.float)
 
     edge_index = []
@@ -144,7 +146,7 @@ def mol_to_graph_data(smiles, spectrum):
 
 
 # -----------------------
-# 数据加载
+# Data loading
 # -----------------------
 with open("./3.2_CH_Cleaner ALL_High_PAHs Dataset.pickle", "rb") as f:
     d = pickle.load(f)
@@ -161,30 +163,33 @@ for s, spec in zip(smiles_list, spectra_list):
 np.random.seed(13)
 np.random.shuffle(dataset)
 
+
 # -----------------------
-# 五折划分
+# Five-fold cross-validation split
 # -----------------------
 n = len(dataset)
 fold_size = n // 5
 folds = [dataset[i * fold_size:(i + 1) * fold_size] for i in range(4)]
 folds.append(dataset[4 * fold_size:])
 
+
 # -----------------------
-# 自动检测维度
+# Automatically infer feature dimensions
 # -----------------------
 sample_data = dataset[0]
 node_feat_dim = sample_data.x.shape[1]
 edge_feat_dim = sample_data.edge_attr.shape[1]
 spectrum_len = sample_data.y.shape[1]
 
-print(f"节点特征: {node_feat_dim}, 边特征: {edge_feat_dim}, 光谱长度: {spectrum_len}")
+print(f"Node features: {node_feat_dim}, Edge features: {edge_feat_dim}, Spectrum length: {spectrum_len}")
 
 
 # -----------------------
-# AFP 模型定义
+# AFP model definition
 # -----------------------
 class AFP_Spectra_Model(nn.Module):
-    def __init__(self, in_channels, hidden_dim, out_dim, edge_dim, num_layers=2, num_timesteps=2, dropout=0.1):
+    def __init__(self, in_channels, hidden_dim, out_dim, edge_dim,
+                 num_layers=2, num_timesteps=2, dropout=0.1):
         super(AFP_Spectra_Model, self).__init__()
         self.afp = AttentiveFP(
             in_channels=in_channels,
@@ -201,7 +206,7 @@ class AFP_Spectra_Model(nn.Module):
 
 
 # -----------------------
-# 训练 & 验证函数
+# Training and evaluation functions
 # -----------------------
 def train_one_epoch(model, loader, optimizer):
     model.train()
@@ -210,7 +215,7 @@ def train_one_epoch(model, loader, optimizer):
         batch = batch.to(device)
         optimizer.zero_grad()
         preds = model(batch)
-        loss = hellinger_loss(preds, batch.y)  # ✅ 训练使用Hellinger损失
+        loss = hellinger_loss(preds, batch.y)  # Training uses Hellinger loss
         loss.backward()
         optimizer.step()
         total_loss += loss.item() * batch.num_graphs
@@ -224,13 +229,13 @@ def evaluate(model, loader):
         for batch in loader:
             batch = batch.to(device)
             preds = model(batch)
-            loss = emd_loss(preds, batch.y)  # ✅ 评估仍然用EMD
+            loss = emd_loss(preds, batch.y)  # Evaluation uses EMD
             total_loss += loss.item() * batch.num_graphs
     return total_loss / len(loader.dataset)
 
 
 # -----------------------
-# 主训练循环：五折交叉验证 + 早停
+# Main training loop: five-fold cross-validation with early stopping
 # -----------------------
 MAX_EPOCHS = 500
 PATIENCE = 300
@@ -243,8 +248,8 @@ for fold_idx in range(5):
     test_dataset = folds[fold_idx]
     train_dataset = [item for i, f in enumerate(folds) if i != fold_idx for item in f]
 
-    print(f"训练集样本数: {len(train_dataset)}")
-    print(f"测试集样本数: {len(test_dataset)}")
+    print(f"Training samples: {len(train_dataset)}")
+    print(f"Test samples: {len(test_dataset)}")
 
     train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True)
     test_loader = DataLoader(test_dataset, batch_size=32)
@@ -258,6 +263,7 @@ for fold_idx in range(5):
         num_timesteps=2,
         dropout=0.1
     ).to(device)
+
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
 
     best_val_emd = float('inf')
@@ -267,7 +273,11 @@ for fold_idx in range(5):
     for epoch in range(1, MAX_EPOCHS + 1):
         train_loss = train_one_epoch(model, train_loader, optimizer)
         val_loss = evaluate(model, test_loader)
-        print(f"Epoch {epoch:03d} | Train Hellinger Loss: {train_loss:.4f} | Val EMD: {val_loss:.4f}")  # 日志更新为Hellinger
+        print(
+            f"Epoch {epoch:03d} | "
+            f"Train Hellinger Loss: {train_loss:.4f} | "
+            f"Val EMD: {val_loss:.4f}"
+        )
 
         if val_loss < best_val_emd:
             best_val_emd = val_loss
@@ -281,8 +291,9 @@ for fold_idx in range(5):
 
     model.load_state_dict(best_model_state)
 
+
     # -----------------------
-    # 每折测试集 EMD 平均 ± 标准差
+    # Mean ± standard deviation of EMD on the test set for each fold
     # -----------------------
     model.eval()
     emd_list = []
@@ -291,14 +302,20 @@ for fold_idx in range(5):
             batch = batch.to(device)
             preds = model(batch)
             for i in range(batch.num_graphs):
-                emd_list.append(emd_loss(preds[i:i + 1], batch.y[i:i + 1]).item())
+                emd_list.append(
+                    emd_loss(preds[i:i + 1], batch.y[i:i + 1]).item()
+                )
 
     avg_emd = statistics.mean(emd_list)
     std_emd = statistics.stdev(emd_list) if len(emd_list) > 1 else 0.0
-    print(f"ALL_High_HD_Fold {fold_idx + 1} 测试集 EMD: {avg_emd:.5f} ± {std_emd:.5f}")
+    print(
+        f"ALL_High_HD_Fold {fold_idx + 1} "
+        f"Test EMD: {avg_emd:.5f} ± {std_emd:.5f}"
+    )
+
 
     # -----------------------
-    # 保存预测
+    # Save predictions for the test set
     # -----------------------
     results = []
     with torch.no_grad():
@@ -314,7 +331,14 @@ for fold_idx in range(5):
                     "true": t
                 })
 
-    fold_path = os.path.join(output_dir, f"ALL_High_HD_Fold_{fold_idx + 1}_results.pickle")
-    with open(fold_path, 'wb') as f:
+    fold_path = os.path.join(
+        output_dir,
+        f"ALL_High_HD_Fold_{fold_idx + 1}_results.pickle"
+    )
+    with open(fold_path, "wb") as f:
         pickle.dump(results, f)
-    print(f"ALL_High_HD_Fold {fold_idx + 1} results saved to {fold_path}")
+
+    print(
+        f"ALL_High_HD_Fold {fold_idx + 1} "
+        f"results saved to {fold_path}"
+    )

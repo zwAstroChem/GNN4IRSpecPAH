@@ -11,21 +11,22 @@ from random import shuffle
 from scipy.stats import pearsonr
 from deepchem.models import AttentiveFPModel
 import os
-# Seed设置随机种子，确保结果的可重复性
+
+# Set random seed to ensure reproducibility
 seed(13)
 
-# 加载数据
+# Load data
 path = "./Fold_Predictions/"
 with open("3.2_CH_Cleaner ALL_High_PAHs Dataset.pickle", "rb") as f:
     d = pickle.load(f)
 smiles = d["smiles"]
 sequences = d["sequences"]
 
-# 打乱数据
+# Shuffle data
 dataset = list(zip(smiles, sequences))
 shuffle(dataset)
 
-# 数据分析，确保重复分子不会跨折
+# Data analysis to ensure duplicate molecules do not cross folds
 single_occurrence_molecules = [x for x in dataset if list(d["smiles"]).count(x[0]) <= 1]
 multiple_occurrence_molecules = [x for x in dataset if x[0] not in [h[0] for h in single_occurrence_molecules]]
 
@@ -43,14 +44,17 @@ while len(multiple_occurrence_molecules) > 0:
     current_molecule = multiple_occurrence_molecules[0]
     while current_molecule[0] in [h[0] for h in multiple_occurrence_molecules]:
         folds[current_fold].append(
-            multiple_occurrence_molecules.pop([h[0] for h in multiple_occurrence_molecules].index(current_molecule[0])))
+            multiple_occurrence_molecules.pop(
+                [h[0] for h in multiple_occurrence_molecules].index(current_molecule[0])
+            )
+        )
 
-# Print the length of each fold.
+# Print the size of each fold
 for i in range(1, 6):
     print(len(folds[i]))
 
 
-# 辅助函数
+# Helper functions
 def normalize(s):
     max_val = max(s)
     scale = 1 / max_val
@@ -67,7 +71,7 @@ def normal_many(x):
     return np.array([floor_out(normalize(j)) for j in x])
 
 
-# EMD 损失函数
+# EMD loss function
 def emd_loss(y_true, y_pred):
     """
     Earth Mover's Distance (EMD) loss function.
@@ -105,7 +109,7 @@ def clean(arr):
     return [item for item in arr if not np.isnan(item)]
 
 
-# 创建数据集
+# Create dataset splits
 dataset_splits = {1: {}, 2: {}, 3: {}, 4: {}, 5: {}}
 for i in range(1, 6):
     test = folds[i]
@@ -120,13 +124,14 @@ for i in range(1, 6):
     dataset_splits[i]["train_y"] = normal_many([j[1] for j in train])
 
 
-# 使用 MorganFP
+# Use Morgan fingerprints
 featurizer = dc.feat.CircularFingerprint(radius=2, size=1024, chiral=False, features=False)
 for i in range(1, 6):
     dataset_splits[i]["test_x"] = featurizer.featurize(dataset_splits[i]["test_smiles"])
     dataset_splits[i]["train_x"] = featurizer.featurize(dataset_splits[i]["train_smiles"])
 
-# 五折交叉验证
+
+# Five-fold cross-validation
 for i in range(1, 6):
     fpmodel = Sequential()
     fpmodel.add(Dense(4096, input_dim=1024))
@@ -138,11 +143,16 @@ for i in range(1, 6):
     fpmodel.add(Dense(1024, activation="relu"))
     fpmodel.add(Dense(180, activation="sigmoid"))
 
-    # ✅ 损失函数改为 EMD
+    # Use EMD as the loss function
     fpmodel.compile(loss=emd_loss, optimizer="Adam")
 
-    fpmodel.fit(dataset_splits[i]["train_x"], dataset_splits[i]["train_y"],
-                batch_size=64, epochs=150, verbose=0)
+    fpmodel.fit(
+        dataset_splits[i]["train_x"],
+        dataset_splits[i]["train_y"],
+        batch_size=64,
+        epochs=150,
+        verbose=0
+    )
 
     # Collect evaluation metrics
     morgan_predictions = fpmodel.predict(dataset_splits[i]["test_x"])
@@ -151,8 +161,10 @@ for i in range(1, 6):
 
     fp_r2s = []
     for x in range(len(morgan_predictions)):
-        current_r2 = wrapped_pearson_correlation(normalize(morgan_predictions[x]),
-                                                 dataset_splits[i]["test_y"][x])
+        current_r2 = wrapped_pearson_correlation(
+            normalize(morgan_predictions[x]),
+            dataset_splits[i]["test_y"][x]
+        )
         current_emd = emd_loss(dataset_splits[i]["test_y"][x], morgan_predictions[x])
 
         total_r2 += 0 if np.isnan(current_r2) else current_r2
@@ -168,16 +180,22 @@ for i in range(1, 6):
     print("EMD Loss for fold", i, ":", current_fold_emd_loss)
 
     clean_fp_r2s = clean(list(map(float, fp_r2s)))
-    print("I", i, statistics.mean(clean_fp_r2s),
-          statistics.median(clean_fp_r2s), statistics.stdev(clean_fp_r2s))
+    print(
+        "I", i,
+        statistics.mean(clean_fp_r2s),
+        statistics.median(clean_fp_r2s),
+        statistics.stdev(clean_fp_r2s)
+    )
 
     # ========================
-    # 保存预测 (带 smiles 和 true)
+    # Save predictions (including smiles and true values)
     # ========================
     results = []
-    for s, p, t in zip(dataset_splits[i]["test_smiles"],
-                       morgan_predictions,
-                       dataset_splits[i]["test_y"]):
+    for s, p, t in zip(
+        dataset_splits[i]["test_smiles"],
+        morgan_predictions,
+        dataset_splits[i]["test_y"]
+    ):
         results.append({
             "smiles": s,
             "pred": p,

@@ -10,14 +10,14 @@ import os
 import statistics
 
 # -----------------------
-# 自动选择设备
+# Automatically select device
 # -----------------------
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(f"Using device: {device}")
 
 
 # -----------------------
-# EMD Loss (评估用)
+# EMD Loss (for evaluation)
 # -----------------------
 def emd_loss(pred, target):
     pred_sum = pred.sum(dim=1, keepdim=True) + 1e-8
@@ -34,26 +34,26 @@ def emd_loss(pred, target):
 
 
 # -----------------------
-# Total Variation Distance Loss (训练用)
+# Total Variation Distance Loss (for training)
 # -----------------------
 def tv_loss(pred, target):
     """
-    Total Variation Distance损失函数
-    公式：TV(P,Q) = 0.5 * Σ|p_i - q_i|
+    Total Variation Distance loss function
+    Formula: TV(P,Q) = 0.5 * Σ|p_i - q_i|
     pred, target: [batch_size, spectrum_len]
     """
-    # 归一化成概率分布
+    # Normalize to probability distributions
     pred_sum = pred.sum(dim=1, keepdim=True) + 1e-8
     target_sum = target.sum(dim=1, keepdim=True) + 1e-8
     p = pred / pred_sum
     q = target / target_sum
 
-    # 数值稳定性处理
+    # Numerical stability
     eps = 1e-8
     p = torch.clamp(p, eps, 1.0 - eps)
     q = torch.clamp(q, eps, 1.0 - eps)
 
-    # 计算总变差距离
+    # Compute total variation distance
     absolute_diff = torch.abs(p - q)
     total_variation = 0.5 * torch.sum(absolute_diff, dim=1)
 
@@ -61,7 +61,7 @@ def tv_loss(pred, target):
 
 
 # -----------------------
-# 光谱归一化
+# Spectrum normalization
 # -----------------------
 def normalize_spectrum(s):
     s = np.array(s, dtype=np.float32)
@@ -72,7 +72,7 @@ def normalize_spectrum(s):
 
 
 # -----------------------
-# SMILES → PyG Data (带 smiles)
+# SMILES → PyG Data (with smiles)
 # -----------------------
 def mol_to_graph_data(smiles, spectrum):
     mol = Chem.MolFromSmiles(smiles)
@@ -140,7 +140,7 @@ def mol_to_graph_data(smiles, spectrum):
 
 
 # -----------------------
-# 数据加载
+# Data loading
 # -----------------------
 with open("./3.2_CH_Cleaner ALL_High_PAHs Dataset.pickle", "rb") as f:
     d = pickle.load(f)
@@ -158,7 +158,7 @@ np.random.seed(13)
 np.random.shuffle(dataset)
 
 # -----------------------
-# 五折划分
+# Five-fold split
 # -----------------------
 n = len(dataset)
 fold_size = n // 5
@@ -166,18 +166,18 @@ folds = [dataset[i * fold_size:(i + 1) * fold_size] for i in range(4)]
 folds.append(dataset[4 * fold_size:])
 
 # -----------------------
-# 自动检测维度
+# Automatically infer dimensions
 # -----------------------
 sample_data = dataset[0]
 node_feat_dim = sample_data.x.shape[1]
 edge_feat_dim = sample_data.edge_attr.shape[1]
 spectrum_len = sample_data.y.shape[1]
 
-print(f"节点特征: {node_feat_dim}, 边特征: {edge_feat_dim}, 光谱长度: {spectrum_len}")
+print(f"Node features: {node_feat_dim}, Edge features: {edge_feat_dim}, Spectrum length: {spectrum_len}")
 
 
 # -----------------------
-# AFP 模型定义
+# AFP model definition
 # -----------------------
 class AFP_Spectra_Model(nn.Module):
     def __init__(self, in_channels, hidden_dim, out_dim, edge_dim, num_layers=2, num_timesteps=2, dropout=0.1):
@@ -197,7 +197,7 @@ class AFP_Spectra_Model(nn.Module):
 
 
 # -----------------------
-# 训练 & 验证函数
+# Training & validation functions
 # -----------------------
 def train_one_epoch(model, loader, optimizer):
     model.train()
@@ -206,7 +206,7 @@ def train_one_epoch(model, loader, optimizer):
         batch = batch.to(device)
         optimizer.zero_grad()
         preds = model(batch)
-        loss = tv_loss(preds, batch.y)  # ✅ 训练使用TV损失
+        loss = tv_loss(preds, batch.y)  # Training uses TV loss
         loss.backward()
         optimizer.step()
         total_loss += loss.item() * batch.num_graphs
@@ -220,13 +220,13 @@ def evaluate(model, loader):
         for batch in loader:
             batch = batch.to(device)
             preds = model(batch)
-            loss = emd_loss(preds, batch.y)  # ✅ 评估仍然用EMD
+            loss = emd_loss(preds, batch.y)  # Evaluation uses EMD
             total_loss += loss.item() * batch.num_graphs
     return total_loss / len(loader.dataset)
 
 
 # -----------------------
-# 主训练循环：五折交叉验证 + 早停
+# Main training loop: five-fold cross-validation + early stopping
 # -----------------------
 MAX_EPOCHS = 500
 PATIENCE = 300
@@ -239,8 +239,8 @@ for fold_idx in range(5):
     test_dataset = folds[fold_idx]
     train_dataset = [item for i, f in enumerate(folds) if i != fold_idx for item in f]
 
-    print(f"训练集样本数: {len(train_dataset)}")
-    print(f"测试集样本数: {len(test_dataset)}")
+    print(f"Training samples: {len(train_dataset)}")
+    print(f"Test samples: {len(test_dataset)}")
 
     train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True)
     test_loader = DataLoader(test_dataset, batch_size=32)
@@ -278,7 +278,7 @@ for fold_idx in range(5):
     model.load_state_dict(best_model_state)
 
     # -----------------------
-    # 每折测试集 EMD 平均 ± 标准差
+    # Test set EMD mean ± std for each fold
     # -----------------------
     model.eval()
     emd_list = []
@@ -291,10 +291,10 @@ for fold_idx in range(5):
 
     avg_emd = statistics.mean(emd_list)
     std_emd = statistics.stdev(emd_list) if len(emd_list) > 1 else 0.0
-    print(f"ALL_High_TVD_Fold {fold_idx + 1} 测试集 EMD: {avg_emd:.5f} ± {std_emd:.5f}")
+    print(f"ALL_High_TVD_Fold {fold_idx + 1} Test EMD: {avg_emd:.5f} ± {std_emd:.5f}")
 
     # -----------------------
-    # 保存预测
+    # Save predictions
     # -----------------------
     results = []
     with torch.no_grad():

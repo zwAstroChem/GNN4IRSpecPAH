@@ -10,14 +10,14 @@ import os
 import statistics
 
 # -----------------------
-# 自动选择设备
+# Automatically select device
 # -----------------------
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(f"Using device: {device}")
 
 
 # -----------------------
-# 标准版 EMD Loss (每个样本归一化)
+# Standard EMD Loss (per-sample normalization)
 # -----------------------
 def emd_loss(pred, target):
     pred_sum = pred.sum(dim=1, keepdim=True) + 1e-8
@@ -34,7 +34,7 @@ def emd_loss(pred, target):
 
 
 # -----------------------
-# 光谱归一化
+# Spectrum normalization
 # -----------------------
 def normalize_spectrum(s):
     s = np.array(s, dtype=np.float32)
@@ -44,16 +44,16 @@ def normalize_spectrum(s):
     return s
 
 '''
-# 总和归一化
+# Sum normalization
 def normalize_spectrum(s):
-    s = np.array(s, dtype=np.float32)   # 转 float32 数组
-    s_sum = s.sum()                     # 光谱总强度
-    if s_sum > 0:                       # 防止除以 0
-        s /= s_sum                      # 每个点除以总和
+    s = np.array(s, dtype=np.float32)   # convert to float32 array
+    s_sum = s.sum()                     # total spectral intensity
+    if s_sum > 0:                       # avoid division by zero
+        s /= s_sum                      # divide each point by total sum
     return s
 '''
 '''
-#全局归一化
+# Global normalization
 def normalize_spectrum(s, global_max):
     s = np.array(s, dtype=np.float32)
     if global_max > 0:
@@ -61,7 +61,7 @@ def normalize_spectrum(s, global_max):
     return s
 '''
 # -----------------------
-# SMILES → PyG Data (带 smiles)
+# SMILES → PyG Data (with smiles stored)
 # -----------------------
 def mol_to_graph_data(smiles, spectrum):
     mol = Chem.MolFromSmiles(smiles)
@@ -124,21 +124,20 @@ def mol_to_graph_data(smiles, spectrum):
 
     y = torch.tensor(normalize_spectrum(spectrum), dtype=torch.float).unsqueeze(0)
 
-
     data = Data(x=x, edge_index=edge_index, edge_attr=edge_attr, y=y, smiles=smiles)
     return data
 
 
 # -----------------------
-# 数据加载
+# Data loading
 # -----------------------
-with open("3.2_CH_Cleaner Low_PAHs Dataset.pickle", "rb") as f:
+with open("3.2_CH_Cleaner PAHs Dataset.pickle", "rb") as f:
     d = pickle.load(f)
 
 smiles_list = d["smiles"]
 spectra_list = d["sequences"]
 
-#global_max = max(spec.max() for spec in spectra_list if len(spec) > 0)
+# global_max = max(spec.max() for spec in spectra_list if len(spec) > 0)
 
 dataset = []
 for s, spec in zip(smiles_list, spectra_list):
@@ -150,7 +149,7 @@ np.random.seed(13)
 np.random.shuffle(dataset)
 
 # -----------------------
-# 五折划分
+# Five-fold split
 # -----------------------
 n = len(dataset)
 fold_size = n // 5
@@ -158,18 +157,18 @@ folds = [dataset[i * fold_size:(i + 1) * fold_size] for i in range(4)]
 folds.append(dataset[4 * fold_size:])
 
 # -----------------------
-# 自动检测维度
+# Automatically detect dimensions
 # -----------------------
 sample_data = dataset[0]
 node_feat_dim = sample_data.x.shape[1]
 edge_feat_dim = sample_data.edge_attr.shape[1]
 spectrum_len = sample_data.y.shape[1]
 
-print(f"节点特征: {node_feat_dim}, 边特征: {edge_feat_dim}, 光谱长度: {spectrum_len}")
+print(f"Node features: {node_feat_dim}, Edge features: {edge_feat_dim}, Spectrum length: {spectrum_len}")
 
 
 # -----------------------
-# AFP 模型定义
+# AFP model definition
 # -----------------------
 class AFP_Spectra_Model(nn.Module):
     def __init__(self, in_channels, hidden_dim, out_dim, edge_dim, num_layers=2, num_timesteps=2, dropout=0.1):
@@ -189,7 +188,7 @@ class AFP_Spectra_Model(nn.Module):
 
 
 # -----------------------
-# 训练 & 验证函数
+# Training & evaluation functions
 # -----------------------
 def train_one_epoch(model, loader, optimizer):
     model.train()
@@ -218,7 +217,7 @@ def evaluate(model, loader):
 
 
 # -----------------------
-# 主训练循环：五折交叉验证 + 早停
+# Main training loop: five-fold cross-validation + early stopping
 # -----------------------
 MAX_EPOCHS = 500
 PATIENCE = 300
@@ -231,8 +230,8 @@ for fold_idx in range(5):
     test_dataset = folds[fold_idx]
     train_dataset = [item for i, f in enumerate(folds) if i != fold_idx for item in f]
 
-    print(f"训练集样本数: {len(train_dataset)}")
-    print(f"测试集样本数: {len(test_dataset)}")
+    print(f"Training samples: {len(train_dataset)}")
+    print(f"Test samples: {len(test_dataset)}")
 
     train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True)
     test_loader = DataLoader(test_dataset, batch_size=32)
@@ -270,7 +269,7 @@ for fold_idx in range(5):
     model.load_state_dict(best_model_state)
 
     # -----------------------
-    # 每折测试集 EMD 平均 ± 标准差
+    # Mean ± standard deviation of EMD on test set for each fold
     # -----------------------
     model.eval()
     emd_list = []
@@ -283,10 +282,10 @@ for fold_idx in range(5):
 
     avg_emd = statistics.mean(emd_list)
     std_emd = statistics.stdev(emd_list) if len(emd_list) > 1 else 0.0
-    print(f"Low_AFP_1_Fold {fold_idx + 1} 测试集 EMD: {avg_emd:.5f} ± {std_emd:.5f}")
+    print(f"Low_AFP_1_Fold {fold_idx + 1} Test EMD: {avg_emd:.5f} ± {std_emd:.5f}")
 
     # -----------------------
-    # 保存预测 (带 smiles 和 true)
+    # Save predictions (with smiles and ground truth)
     # -----------------------
     results = []
     with torch.no_grad():
@@ -294,7 +293,7 @@ for fold_idx in range(5):
             batch = batch.to(device)
             preds = model(batch).cpu().numpy()
             trues = batch.y.cpu().numpy()
-            smiles_list = batch.smiles  # ✅ 直接取出保存的 SMILES
+            smiles_list = batch.smiles  # directly retrieve stored SMILES
             for p, t, s in zip(preds, trues, smiles_list):
                 results.append({
                     "smiles": s,
