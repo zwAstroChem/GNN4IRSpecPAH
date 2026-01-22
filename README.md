@@ -4,9 +4,11 @@ Graph Neural Network Prediction of Infrared Spectra of Polycyclic Aromatic Hydro
 This is a python code for predicting infrared spectra of PAH molecules using graph neural network (GNN) models. 
 
 CODE USAGE INSTRUCTIONS
+
 ---------------------------
  Conda env configuration
 ---------------------------
+
 aiohappyeyeballs          2.6.1                    
 aiohttp                   3.12.15                  
 aiosignal                 1.4.0                    
@@ -81,32 +83,55 @@ yarl                      1.20.1
 ---------------------------
            Code
 ---------------------------
+
 Model Code:
+
 This file contains four graph neural network-based models (AFP, GCN, GAT, MPNN) and the MFP model based on traditional molecular fingerprinting for predicting infrared spectral data, along with AFP models using different training loss functions.
+
 AFP model using EMD as training loss function: PAH_EMD_AFP.py
+
 GAT model using EMD as training loss function: PAH_EMD_GAT.py
+
 GCN model using EMD as training loss function: PAH_EMD_GCN.py
+
 MFP model using EMD as training loss function: PAH_EMD_MFP.py
+
 Based on MPNN using EMD as training loss function: PAH_EMD_MPNN.py
+
 Based on HD as training loss function for AFP model: PAH_HD_AFP.py
+
 Based on JSD as training loss function for AFP model: PAH_HD_JSD.py
+
 AFP model using SIS as training loss function: PAH_HD_SIS.py
+
 AFP model using TVD as training loss function: PAH_HD_TVD.py
+
 Testing generalization capability of JSD-based AFP model: PAH_JSD_TEST_AFP.py
 
 ---------------------------
            DATA
 ---------------------------
-Data Aspects:
-Includes processed SMILES string representations of 1,570 high- and low-frequency molecules from the NASA 3.2 PAH database, along with their corresponding spectral data. Also includes processed SMILES string representations of 997 high- and low-frequency molecules (with carbon atom counts between 50-100) from the NASA 4.0 PAH database, along with their corresponding spectral data, used to test model generalization capability.
+
+Includes processed SMILES string representations of 1,570 high- and low-frequency molecules from the NASA 3.2 PAH database, along with their corresponding spectral data. 
+
+Also includes processed SMILES string representations of 997 high- and low-frequency molecules (with carbon atom counts between 50-100) from the NASA 4.0 PAH database, along with their corresponding spectral data, used to test model generalization capability.
+
 High-frequency data: 3.2_CH_Cleaner ALL_High_PAHs Dataset.pickle, 4.0_CH_Cleaner 50_100_ALL_High_PAHs Dataset.pickle.
+
 Low-frequency data: 3.2_CH_Cleaner PAHs Dataset.pickle, 4.0_CH_Cleaner 50_100_PAHs Dataset.pickle.
+
 ---------------------------
             Run
 ---------------------------
-Code Execution: After installing the above environment configurations, ensure all data files and code files reside in the same directory before running. Prediction outputs will be saved in the Fold_Predictions directory. The Best_model file within this directory contains the trained AFP model using JSD as the training loss function. This file is utilized when running PAH_JSD_TEST_AFP.py.
+
+Code Execution: After installing the above environment configurations, ensure all data files and code files reside in the same directory before running. Prediction outputs will be saved in the Fold_Predictions directory.
+
+The Best_model file within this directory contains the trained AFP model using JSD as the training loss function. This file is utilized when running PAH_JSD_TEST_AFP.py.
 
 ---------------------------
         Limitations
 ---------------------------
-The model is currently trained only on neutral PAHs and does not support charged molecules or isotopologues. Predictions for molecules that significantly differ from the training dataset may have increased uncertainty.
+
+The model is currently trained only on neutral PAHs and does not support charged molecules or isotopologues. 
+
+Predictions for molecules that significantly differ from the training dataset may have increased uncertainty.
